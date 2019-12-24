@@ -85,7 +85,7 @@ app.get('/api/v1/creatures/:moniker', function (req, res) {
             if (err) throw err;
             var creature = results[0];
             con.query(
-                "SELECT relation.child, creature.name " +
+                "SELECT relation.child AS moniker, creature.name AS name " +
                 "FROM ParentToChild AS relation " + 
                 "LEFT JOIN Creatures AS creature " + 
                 "ON relation.child = creature.moniker " + 
@@ -100,34 +100,15 @@ app.get('/api/v1/creatures/:moniker', function (req, res) {
         });
 });
 
-app.get('/api/v1/creatures/:moniker/events', function (req, res) {
-    
-    var con = mysql.createConnection({
-        host: config.database.host,
-        user: config.database.user,
-        password: config.database.password,
-        database: config.database.db
-    });
-    
-    con.query(
-        "SELECT * " +
-        "FROM Events " + 
-        "WHERE Events.moniker = ?",
-        [req.params.moniker],
-        function(err, result, fields){
-           if (err) throw err;
-           res.setHeader('Access-Control-Allow-Origin', '*');
-           res.end(JSON.stringify(result))
-        });
-});
 
-app.put('/api/v1/creatures', function (req, res) {
+app.put('/api/v1/creatures/:moniker', function (req, res) {
+    var moniker = req.params.moniker;
     var creature = req.body;
     var birthEvent = creature.events[0];
     
     var events = creature.events
     .map( (event) => {return [
-               creature.moniker,
+               moniker,
                event.histEventType,
                event.lifeStage,
                event.photo,
@@ -144,7 +125,7 @@ app.put('/api/v1/creatures', function (req, res) {
     var children = creature.events
     .filter((event) => { return event.histEventType === 8 || event.histEventType === 9; })
     .map((event) => { return [
-        creature.moniker,
+        moniker,
         event.moniker1
     ];});
     
@@ -163,7 +144,7 @@ app.put('/api/v1/creatures', function (req, res) {
             "(moniker, name, crossoverPointMutations, pointMutations, gender, genus, birthEventType, birthdate, parent1Moniker, parent2Moniker) " +
             "VALUES ? ",
             [[[
-                creature.moniker,
+                moniker,
                 creature.name,
                 creature.crossoverPointMutations,
                 creature.pointMutations,
@@ -198,4 +179,25 @@ app.put('/api/v1/creatures', function (req, res) {
     });
     
     res.end("");
+});
+
+app.get('/api/v1/creatures/:moniker/events', function (req, res) {
+    
+    var con = mysql.createConnection({
+        host: config.database.host,
+        user: config.database.user,
+        password: config.database.password,
+        database: config.database.db
+    });
+    
+    con.query(
+        "SELECT * " +
+        "FROM Events " + 
+        "WHERE Events.moniker = ?",
+        [req.params.moniker],
+        function(err, result, fields){
+           if (err) throw err;
+           res.setHeader('Access-Control-Allow-Origin', '*');
+           res.end(JSON.stringify(result))
+        });
 });
