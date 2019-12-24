@@ -28,6 +28,7 @@ app.put('/api/v1/creatures', function (req, res) {
     
     var events = creature.events
     .map( (event) => {return [
+               creature.moniker,
                event.histEventType,
                event.lifeStage,
                event.photo,
@@ -72,7 +73,7 @@ app.put('/api/v1/creatures', function (req, res) {
             if (err) throw err;
             con.query(
                 "INSERT INTO Events " +
-                "(histEventType, lifeStage, photo, moniker1, moniker2, timeUtc, tickAge, worldTick, worldName, worldId, userText) " +
+                "(moniker, histEventType, lifeStage, photo, moniker1, moniker2, timeUtc, tickAge, worldTick, worldName, worldId, userText) " +
                 "VALUES ? ",
                 [events],
                 function (err, result) {
@@ -84,3 +85,4 @@ app.put('/api/v1/creatures', function (req, res) {
     
     res.end("");
 });
+
