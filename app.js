@@ -42,6 +42,13 @@ app.put('/api/v1/creatures', function (req, res) {
                event.userText
     ];});
     
+    var children = creature.events
+    .filter((event) => { return event.histEventType === 8 || event.histEventType === 9; })
+    .map((event) => { return [
+        creature.moniker,
+        event.moniker1
+    ];});
+    
     console.log(events);
     
     var con = mysql.createConnection({
@@ -78,7 +85,17 @@ app.put('/api/v1/creatures', function (req, res) {
                 [events],
                 function (err, result) {
                 if (err) throw err;
-                console.log("1 record inserted");
+                if (children.length > 0){
+                    con.query(
+                        "INSERT INTO ParentToChild " +
+                        "(parent, child) " +
+                        "VALUES ? ",
+                        [children],
+                        function (err, result) {
+                        if (err) throw err;
+                        console.log("1 record inserted");
+                    });
+                }
             });
         });
     });
