@@ -24,7 +24,7 @@ app.get('/api/v1/creatures', function (req, res) {
     });
     
     con.query(
-        "SELECT c.moniker, c.name, c.crossoverPointMutations, c.pointMutations, c.gender, c.genus, c.birtheventType, c.birthdate, " +
+        "SELECT c.moniker, c.name, c.crossoverPointMutations, c.pointMutations, c.gender, c.genus, c.birthEventType, c.birthdate, " +
         "   c.parent1Moniker, p1.name AS parent1Name, c.parent2Moniker, p2.name AS parent2Name " +
         "FROM Creatures AS c " + 
         "LEFT JOIN Creatures AS p1 " + 
@@ -35,7 +35,30 @@ app.get('/api/v1/creatures', function (req, res) {
         function(err, result, fields){
            if (err) throw err;
            res.setHeader('Access-Control-Allow-Origin', '*');
-           res.end(JSON.stringify(result))
+           res.write("[");
+           async.forEachOf(result, (creature, i, callback) => {
+               con.query(
+                "SELECT relation.child AS moniker, creature.name AS name " +
+                "FROM ParentToChild AS relation " + 
+                "LEFT JOIN Creatures AS creature " +
+                "ON relation.child = creature.moniker " + 
+                "WHERE relation.parent = ?",
+                [creature.moniker],
+                function(err, result, fields){
+                    if (err) throw err;
+                    if (i !== 0){
+                       res.write(",");
+                    }
+                    creature.children = result;
+                    res.write(JSON.stringify(creature));
+                    callback();
+                });
+               
+           }, err => {
+               if (err) throw err;
+               res.end("]");
+           });
+           
         });
 });
 
@@ -49,7 +72,7 @@ app.get('/api/v1/creatures/:moniker', function (req, res) {
     });
     
     con.query(
-        "SELECT c.moniker, c.name, c.crossoverPointMutations, c.pointMutations, c.gender, c.genus, c.birtheventType, c.birthdate, " +
+        "SELECT c.moniker, c.name, c.crossoverPointMutations, c.pointMutations, c.gender, c.genus, c.birthEventType, c.birthdate, " +
         "   c.parent1Moniker, p1.name AS parent1Name, c.parent2Moniker, p2.name AS parent2Name " +
         "FROM Creatures AS c " + 
         "LEFT JOIN Creatures AS p1 " + 
@@ -58,10 +81,22 @@ app.get('/api/v1/creatures/:moniker', function (req, res) {
         "ON c.parent2Moniker = p2.moniker " +
         "WHERE c.moniker = ?",
         [req.params.moniker],
-        function(err, result, fields){
-           if (err) throw err;
-           res.setHeader('Access-Control-Allow-Origin', '*');
-           res.end(JSON.stringify(result[0]))
+        function(err, results, fields){
+            if (err) throw err;
+            var creature = results[0];
+            con.query(
+                "SELECT relation.child, creature.name " +
+                "FROM ParentToChild AS relation " + 
+                "LEFT JOIN Creatures AS creature " + 
+                "ON relation.child = creature.moniker " + 
+                "WHERE relation.parent = ?",
+                [creature.moniker],
+                function(err, childrenResult, fields){
+                   if (err) throw err;
+                   creature.children = childrenResult;
+                   res.setHeader('Access-Control-Allow-Origin', '*');
+                   res.end(JSON.stringify(creature));
+                });
         });
 });
 
