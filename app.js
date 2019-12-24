@@ -23,12 +23,25 @@ app.get('/listUsers', function (req, res) {
 });
 
 app.put('/api/v1/creatures', function (req, res) {
-    console.log(req.body);
-    
-    console.log(config.database);
-    
     var creature = req.body;
     var birthEvent = creature.events[0];
+    
+    var events = creature.events
+    .map( (event) => {return [
+               event.histEventType,
+               event.lifeStage,
+               event.photo,
+               event.moniker1,
+               event.moniker2,
+               event.timeUtc,
+               event.tickAge,
+               event.worldTick,
+               event.worldName,
+               event.worldId,
+               event.userText
+    ];});
+    
+    console.log(events);
     
     var con = mysql.createConnection({
       host: config.database.host,
@@ -59,20 +72,9 @@ app.put('/api/v1/creatures', function (req, res) {
             if (err) throw err;
             con.query(
                 "INSERT INTO Events " +
-                "(moniker, name, crossoverPointMutations, pointMutations, gender, genus, birthEventType, birthdate, parent1Moniker, parent2Moniker) " +
+                "(histEventType, lifeStage, photo, moniker1, moniker2, timeUtc, tickAge, worldTick, worldName, worldId, userText) " +
                 "VALUES ? ",
-                [[[
-                    creature.moniker,
-                    creature.name,
-                    creature.crossoverPointMutations,
-                    creature.pointMutations,
-                    creature.gender,
-                    creature.genus,
-                    birthEvent.histEventType,
-                    birthEvent.timeUtc,
-                    birthEvent.moniker1,
-                    birthEvent.moniker2
-                    ]]],
+                [events],
                 function (err, result) {
                 if (err) throw err;
                 console.log("1 record inserted");
@@ -82,4 +84,3 @@ app.put('/api/v1/creatures', function (req, res) {
     
     res.end("");
 });
-
