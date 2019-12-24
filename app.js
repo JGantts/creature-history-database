@@ -15,11 +15,41 @@ var server = app.listen(8081, function () {
    console.log("Example app listening at http://%s:%s", host, port);
 });
 
-app.get('/listUsers', function (req, res) {
-   fs.readFile( __dirname + "/" + "users.json", 'utf8', function (err, data) {
-      console.log( data );
-      res.end( data );
-   });
+app.get('/api/v1/creatures', function (req, res) {
+    var con = mysql.createConnection({
+        host: config.database.host,
+        user: config.database.user,
+        password: config.database.password,
+        database: config.database.db
+    });
+    
+    
+});
+
+app.get('/api/v1/creatures/:moniker', function (req, res) {
+    
+    var con = mysql.createConnection({
+        host: config.database.host,
+        user: config.database.user,
+        password: config.database.password,
+        database: config.database.db
+    });
+    
+    con.query(
+        "SELECT c.moniker, c.name, c.crossoverPointMutations, c.pointMutations, c.gender, c.genus, c.birtheventType, c.birthdate, " +
+        "   c.parent1Moniker, p1.name AS parent1Name, c.parent2Moniker, p2.name AS parent2Name " +
+        "FROM Creatures AS c " + 
+        "LEFT JOIN Creatures AS p1 " + 
+        "ON c.parent1Moniker = p1.moniker " + 
+        "LEFT JOIN Creatures AS p2 " +
+        "ON c.parent2Moniker = p2.moniker " +
+        "WHERE c.moniker = ?",
+        [req.params.moniker],
+        function(err, result, fields){
+           if (err) throw err;
+           res.end(JSON.stringify(result[0]))
+        });
+    
 });
 
 app.put('/api/v1/creatures', function (req, res) {
@@ -49,7 +79,6 @@ app.put('/api/v1/creatures', function (req, res) {
         event.moniker1
     ];});
     
-    console.log(events);
     
     var con = mysql.createConnection({
       host: config.database.host,
@@ -57,9 +86,9 @@ app.put('/api/v1/creatures', function (req, res) {
       password: config.database.password,
       database: config.database.db
     });
+    
     con.connect(function(err) {
         if (err) throw err;
-        console.log("Connected!");
         con.query(
             "INSERT INTO Creatures " +
             "(moniker, name, crossoverPointMutations, pointMutations, gender, genus, birthEventType, birthdate, parent1Moniker, parent2Moniker) " +
@@ -93,7 +122,6 @@ app.put('/api/v1/creatures', function (req, res) {
                         [children],
                         function (err, result) {
                         if (err) throw err;
-                        console.log("1 record inserted");
                     });
                 }
             });
