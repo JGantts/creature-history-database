@@ -3,6 +3,7 @@ var mysql = require('mysql');
 var async = require('async');
 var bodyParser = require('body-parser');
 var config = require('./config').production;
+const fs = require('fs');
 
 var app = express();
 
@@ -25,7 +26,8 @@ app.get('/api/v1/creatures', function (req, res) {
     
     con.query(
         "SELECT c.moniker, c.name, c.crossoverPointMutations, c.pointMutations, c.gender, c.genus, c.birthEventType, c.birthdate, " +
-        "   c.parent1Moniker, p1.name AS parent1Name, c.parent2Moniker, p2.name AS parent2Name " +
+        "   c.parent1Moniker, p1.name AS parent1Name, c.parent2Moniker, p2.name AS parent2Name, " +
+        "   c.birthWorldName, c.birthWorldId " +
         "FROM Creatures AS c " + 
         "LEFT JOIN Creatures AS p1 " + 
         "ON c.parent1Moniker = p1.moniker " + 
@@ -73,7 +75,8 @@ app.get('/api/v1/creatures/:moniker', function (req, res) {
     
     con.query(
         "SELECT c.moniker, c.name, c.crossoverPointMutations, c.pointMutations, c.gender, c.genus, c.birthEventType, c.birthdate, " +
-        "   c.parent1Moniker, p1.name AS parent1Name, c.parent2Moniker, p2.name AS parent2Name " +
+        "   c.parent1Moniker, p1.name AS parent1Name, c.parent2Moniker, p2.name AS parent2Name, " +
+        "   c.birthWorldName, c.birthWorldId " +
         "FROM Creatures AS c " + 
         "LEFT JOIN Creatures AS p1 " + 
         "ON c.parent1Moniker = p1.moniker " + 
@@ -99,7 +102,6 @@ app.get('/api/v1/creatures/:moniker', function (req, res) {
                 });
         });
 });
-
 
 app.put('/api/v1/creatures/:moniker', function (req, res) {
     var moniker = req.params.moniker;
@@ -141,7 +143,7 @@ app.put('/api/v1/creatures/:moniker', function (req, res) {
         if (err) throw err;
         con.query(
             "INSERT INTO Creatures " +
-            "(moniker, name, crossoverPointMutations, pointMutations, gender, genus, birthEventType, birthdate, parent1Moniker, parent2Moniker) " +
+            "(moniker, name, crossoverPointMutations, pointMutations, gender, genus, birthEventType, birthdate, parent1Moniker, parent2Moniker, birthWorldName, birthWorldId) " +
             "VALUES ? ",
             [[[
                 moniker,
@@ -153,7 +155,9 @@ app.put('/api/v1/creatures/:moniker', function (req, res) {
                 birthEvent.histEventType,
                 birthEvent.timeUtc,
                 birthEvent.moniker1,
-                birthEvent.moniker2
+                birthEvent.moniker2,
+                birthEvent.worldName,
+                birthEvent.worldId
                 ]]],
             function (err, result) {
             if (err) throw err;
@@ -198,6 +202,7 @@ app.get('/api/v1/creatures/:moniker/events', function (req, res) {
         function(err, result, fields){
            if (err) throw err;
            res.setHeader('Access-Control-Allow-Origin', '*');
-           res.end(JSON.stringify(result))
+           res.end(JSON.stringify(result));
         });
 });
+
