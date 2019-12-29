@@ -3,12 +3,16 @@ var mysql = require('mysql');
 var async = require('async');
 var bodyParser = require('body-parser');
 var config = require('./config').production;
-const fs = require('fs');
+var fs = require('fs');
 
 var app = express();
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
+app.use(bodyParser.raw({
+  type: 'image/png',
+  limit: '10mb'
+}));
 
 var server = app.listen(8081, function () {
    var host = server.address().address;
@@ -206,3 +210,20 @@ app.get('/api/v1/creatures/:moniker/events', function (req, res) {
         });
 });
 
+
+app.get('/api/v1/creatures/images/:imageName', function (req, res) {
+
+});
+
+app.put('/api/v1/creatures/images/:imageName', function (req,res) {
+  console.log(req.params.imageName);
+  var filePath = __dirname + "/images/" + req.params.imageName + ".png";
+  fs.writeFile(filePath, req.body, function(err) {
+    if(err){
+        console.log(err);
+        res.status(500).end();
+    }else{
+        res.status(204).end();
+    }
+  });
+});
