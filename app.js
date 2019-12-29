@@ -212,7 +212,24 @@ app.get('/api/v1/creatures/:moniker/events', function (req, res) {
 
 
 app.get('/api/v1/creatures/images/:imageName', function (req, res) {
-
+    console.log(req.params.imageName);
+    var filePath = __dirname + "/images/" + req.params.imageName + ".png";
+    fs.exists(filePath, function(exists){
+        if(exists){
+            fs.readFile(filePath, function(err, data){
+                if(err){
+                    console.log(err);
+                    res.status(500).end();
+                }
+                res.writeHead(200, {'Content-Type': 'image/png'});
+                res.write(data);
+                res.end();
+            });
+        }else{
+            console.log("Couldn't find: " + filePath);
+            res.status(404).end();
+        }
+    });
 });
 
 app.put('/api/v1/creatures/images/:imageName', function (req,res) {
