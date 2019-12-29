@@ -52,12 +52,28 @@ app.get('/api/v1/creatures', function (req, res) {
                 [creature.moniker],
                 function(err, result, fields){
                     if (err) throw err;
-                    if (i !== 0){
-                       res.write(",");
-                    }
                     creature.children = result;
-                    res.write(JSON.stringify(creature));
-                    callback();
+                    con.query(
+                        "SELECT event.photo " +
+                        "FROM Events AS event " +  
+                        "WHERE event.moniker = ? AND NOT event.photo = '' " +
+                        "ORDER BY event.timeUTC DESC " +
+                        "LIMIT 1",
+                        [creature.moniker],
+                        function(err, result, fields){
+                            
+                            if (err) throw err;
+                            if (i !== 0){
+                               res.write(",");
+                            }
+                            if (result.length === 0){
+                                creature.photo = null;
+                            }else{
+                                creature.photo = result[0].photo;
+                            }
+                            res.write(JSON.stringify(creature));
+                            callback();
+                    });
                 });
                
            }, err => {
