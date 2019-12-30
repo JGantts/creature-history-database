@@ -3,7 +3,7 @@ var mysql = require('mysql');
 var async = require('async');
 var bodyParser = require('body-parser');
 var config = require('./config').production;
-var fs = require('fs');
+var fs = require('graceful-fs');
 
 var app = express();
 
@@ -228,7 +228,6 @@ app.get('/api/v1/creatures/:moniker/events', function (req, res) {
 
 
 app.get('/api/v1/creatures/images/:imageName', function (req, res) {
-    console.log(req.params.imageName);
     var filePath = __dirname + "/images/" + req.params.imageName + ".png";
     fs.exists(filePath, function(exists){
         if(exists){
@@ -236,10 +235,11 @@ app.get('/api/v1/creatures/images/:imageName', function (req, res) {
                 if(err){
                     console.log(err);
                     res.status(500).end();
+                }else{
+                    res.writeHead(200, {'Content-Type': 'image/png'});
+                    res.write(data);
+                    res.end();
                 }
-                res.writeHead(200, {'Content-Type': 'image/png'});
-                res.write(data);
-                res.end();
             });
         }else{
             console.log("Couldn't find: " + filePath);
