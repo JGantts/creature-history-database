@@ -36,10 +36,13 @@ app.get('/api/v1/creatures', function (req, res) {
         "LEFT JOIN Creatures AS p1 " + 
         "ON c.parent1Moniker = p1.moniker " + 
         "LEFT JOIN Creatures AS p2 " +
-        "ON c.parent2Moniker = p2.moniker ",
+        "ON c.parent2Moniker = p2.moniker " +
+        "ORDER BY RAND() " +
+        "LIMIT 12 ",
         [req.params.moniker],
         function(err, result, fields){
            if (err) throw err;
+           result = result.sort(function(a, b){return a.birthdate-b.birthdate});
            res.setHeader('Access-Control-Allow-Origin', '*');
            res.write("[");
            async.forEachOf(result, (creature, i, callback) => {
