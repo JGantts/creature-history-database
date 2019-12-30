@@ -218,9 +218,13 @@ app.get('/api/v1/creatures/:moniker/events', function (req, res) {
     });
     
     con.query(
-        "SELECT * " +
-        "FROM Events " + 
-        "WHERE Events.moniker = ?",
+        "SELECT event.moniker, event.histEventType, event.lifeStage, event.photo, event.moniker1, m1.name AS moniker1Name, event.moniker2, m2.name AS moniker2Name, event.timeUTC, event.tickAge, event.userText, event.worldName, event.WorldTick, event.worldId " +
+        "FROM Events as event " + 
+        "LEFT JOIN Creatures as m1 " +
+        "ON event.moniker1 = m1.moniker " +
+        "LEFT JOIN Creatures as m2 " +
+        "ON event.moniker2 = m2.moniker " +
+        "WHERE event.moniker = ?",
         [req.params.moniker],
         function(err, result, fields){
            if (err) throw err;
