@@ -209,6 +209,52 @@ app.put('/api/v1/creatures/:moniker', function (req, res) {
     res.end("");
 });
 
+app.get('/api/v1/creatures/:moniker/gender', function (req, res) {
+    
+    var con = mysql.createConnection({
+        host: config.database.host,
+        user: config.database.user,
+        password: config.database.password,
+        database: config.database.db
+    });
+    
+    con.query(
+        "SELECT c.gender " +
+        "FROM Creatures AS c " + 
+        "WHERE c.moniker = ?",
+        [req.params.moniker],
+        function(err, results, fields){
+            if (err) throw err;
+            
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            res.write(results[0].gender.toString());
+            res.end();
+        });
+});
+
+app.get('/api/v1/creatures/:moniker/name', function (req, res) {
+    
+    var con = mysql.createConnection({
+        host: config.database.host,
+        user: config.database.user,
+        password: config.database.password,
+        database: config.database.db
+    });
+    
+    con.query(
+        "SELECT c.name " +
+        "FROM Creatures AS c " + 
+        "WHERE c.moniker = ?",
+        [req.params.moniker],
+        function(err, results, fields){
+            if (err) throw err;
+            
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            res.write(results[0].name);
+            res.end();
+        });
+});
+
 app.get('/api/v1/creatures/:moniker/events', function (req, res) {
     
     var con = mysql.createConnection({
