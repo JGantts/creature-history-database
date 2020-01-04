@@ -14,6 +14,21 @@ app.use(bodyParser.raw({
   limit: '10mb'
 }));
 
+var con = mysql.createConnection({
+    host: config.database.host,
+    user: config.database.user,
+    password: config.database.password,
+    database: config.database.db
+});
+
+con.connect(function(err){
+   if(err){
+       console.log("Error connection to database: " + err)
+   }else{
+       console.log("Connected to database.")
+   }
+});
+
 var server = app.listen(8081, function () {
    var host = server.address().address;
    var port = server.address().port;
@@ -21,13 +36,6 @@ var server = app.listen(8081, function () {
 });
 
 app.get('/api/v1/creatures', function (req, res) {
-    var con = mysql.createConnection({
-        host: config.database.host,
-        user: config.database.user,
-        password: config.database.password,
-        database: config.database.db
-    });
-    
     con.query(
         "SELECT c.moniker, c.name, c.crossoverPointMutations, c.pointMutations, c.gender, c.genus, c.birthEventType, c.birthdate, " +
         "   c.parent1Moniker, p1.name AS parent1Name, c.parent2Moniker, p2.name AS parent2Name, " +
@@ -88,14 +96,6 @@ app.get('/api/v1/creatures', function (req, res) {
 });
 
 app.get('/api/v1/creatures/:moniker', function (req, res) {
-    
-    var con = mysql.createConnection({
-        host: config.database.host,
-        user: config.database.user,
-        password: config.database.password,
-        database: config.database.db
-    });
-    
     con.query(
         "SELECT c.moniker, c.name, c.crossoverPointMutations, c.pointMutations, c.gender, c.genus, c.birthEventType, c.birthdate, " +
         "   c.parent1Moniker, p1.name AS parent1Name, c.parent2Moniker, p2.name AS parent2Name, " +
@@ -153,14 +153,6 @@ app.put('/api/v1/creatures/:moniker', function (req, res) {
         moniker,
         event.moniker1
     ];});
-    
-    
-    var con = mysql.createConnection({
-      host: config.database.host,
-      user: config.database.user,
-      password: config.database.password,
-      database: config.database.db
-    });
     
     con.connect(function(err) {
         if (err) throw err;
@@ -222,14 +214,6 @@ app.put('/api/v1/creatures/:moniker', function (req, res) {
 });
 
 app.get('/api/v1/creatures/:moniker/gender', function (req, res) {
-    
-    var con = mysql.createConnection({
-        host: config.database.host,
-        user: config.database.user,
-        password: config.database.password,
-        database: config.database.db
-    });
-    
     con.query(
         "SELECT c.gender " +
         "FROM Creatures AS c " + 
@@ -244,14 +228,6 @@ app.get('/api/v1/creatures/:moniker/gender', function (req, res) {
         });
 });
 app.put('/api/v1/creatures/:moniker/gender', function (req, res) {
-    
-    var con = mysql.createConnection({
-        host: config.database.host,
-        user: config.database.user,
-        password: config.database.password,
-        database: config.database.db
-    });
-    
     con.query(
         "UPDATE Creatures " +
         "SET gender = ? " + 
@@ -266,14 +242,6 @@ app.put('/api/v1/creatures/:moniker/gender', function (req, res) {
 });
 
 app.get('/api/v1/creatures/:moniker/name', function (req, res) {
-    
-    var con = mysql.createConnection({
-        host: config.database.host,
-        user: config.database.user,
-        password: config.database.password,
-        database: config.database.db
-    });
-    
     con.query(
         "SELECT c.name " +
         "FROM Creatures AS c " + 
@@ -288,14 +256,6 @@ app.get('/api/v1/creatures/:moniker/name', function (req, res) {
         });
 });
 app.put('/api/v1/creatures/:moniker/name', function (req, res) {
-    
-    var con = mysql.createConnection({
-        host: config.database.host,
-        user: config.database.user,
-        password: config.database.password,
-        database: config.database.db
-    });
-    
     con.query(
         "UPDATE Creatures " +
         "SET name = ? " + 
@@ -310,14 +270,6 @@ app.put('/api/v1/creatures/:moniker/name', function (req, res) {
 });
 
 app.get('/api/v1/creatures/:moniker/events', function (req, res) {
-    
-    var con = mysql.createConnection({
-        host: config.database.host,
-        user: config.database.user,
-        password: config.database.password,
-        database: config.database.db
-    });
-    
     con.query(
         "SELECT event.moniker, event.histEventType, event.lifeStage, event.photo, event.moniker1, m1.name AS moniker1Name, event.moniker2, m2.name AS moniker2Name, event.timeUTC, event.tickAge, event.userText, event.worldName, event.WorldTick, event.worldId " +
         "FROM Events as event " + 
