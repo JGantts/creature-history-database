@@ -125,7 +125,6 @@ app.get('/api/v1/creatures/:moniker', function (req, res) {
                 });
         });
 });
-
 app.put('/api/v1/creatures/:moniker', function (req, res) {
     var moniker = req.params.moniker;
     var creature = req.body;
@@ -165,33 +164,42 @@ app.put('/api/v1/creatures/:moniker', function (req, res) {
     
     con.connect(function(err) {
         if (err) throw err;
-        con.query(
-            "INSERT INTO Creatures " +
-            "(moniker, name, crossoverPointMutations, pointMutations, gender, genus, birthEventType, birthdate, parent1Moniker, parent2Moniker, birthWorldName, birthWorldId) " +
-            "VALUES ? ",
-            [[[
-                moniker,
-                creature.name,
-                creature.crossoverPointMutations,
-                creature.pointMutations,
-                creature.gender,
-                creature.genus,
-                birthEvent.histEventType,
-                birthEvent.timeUtc,
-                birthEvent.moniker1,
-                birthEvent.moniker2,
-                birthEvent.worldName,
-                birthEvent.worldId
-                ]]],
-            function (err, result) {
-            if (err) throw err;
-            con.query(
-                "INSERT INTO Events " +
-                "(moniker, eventNumber, histEventType, lifeStage, photo, moniker1, moniker2, timeUtc, tickAge, worldTick, worldName, worldId, userText) " +
-                "VALUES ? ",
-                [events],
-                function (err, result) {
-                if (err) throw err;
+        
+        async.series([
+            function(callback){
+                con.query(
+                    "INSERT IGNORE INTO Creatures " +
+                    "(moniker, name, crossoverPointMutations, pointMutations, gender, genus, birthEventType, birthdate, parent1Moniker, parent2Moniker, birthWorldName, birthWorldId) " +
+                    "VALUES ? ",
+                    [[[
+                        moniker,
+                        creature.name,
+                        creature.crossoverPointMutations,
+                        creature.pointMutations,
+                        creature.gender,
+                        creature.genus,
+                        birthEvent.histEventType,
+                        birthEvent.timeUtc,
+                        birthEvent.moniker1,
+                        birthEvent.moniker2,
+                        birthEvent.worldName,
+                        birthEvent.worldId
+                        ]]],
+                    function (err, result) {
+                        if (err) throw err;
+                        callback();
+            })},
+            function(callbakc){
+                con.query(
+                    "INSERT IGNORE INTO Events " +
+                    "(moniker, eventNumber, histEventType, lifeStage, photo, moniker1, moniker2, timeUtc, tickAge, worldTick, worldName, worldId, userText) " +
+                    "VALUES ? ",
+                    [events],
+                    function (err, result) {
+                        if (err) throw err;
+                        callback();
+            })},
+            function(callback){
                 if (children.length > 0){
                     con.query(
                         "INSERT INTO ParentToChild " +
@@ -200,13 +208,17 @@ app.put('/api/v1/creatures/:moniker', function (req, res) {
                         [children],
                         function (err, result) {
                         if (err) throw err;
+                        callback();
                     });
+                }else{
+                    callback();
                 }
+            }
+            ],
+            function(err, results){
+                res.end("");
             });
-        });
     });
-    
-    res.end("");
 });
 
 app.get('/api/v1/creatures/:moniker/gender', function (req, res) {
@@ -227,7 +239,7 @@ app.get('/api/v1/creatures/:moniker/gender', function (req, res) {
             if (err) throw err;
             
             res.setHeader('Access-Control-Allow-Origin', '*');
-            res.write(results[0].gender.toString());
+            res.write(JSON.stringify(results[0]));
             res.end();
         });
 });
@@ -271,7 +283,7 @@ app.get('/api/v1/creatures/:moniker/name', function (req, res) {
             if (err) throw err;
             
             res.setHeader('Access-Control-Allow-Origin', '*');
-            res.write(results[0].name);
+            res.write(JSON.stringify(results[0]));
             res.end();
         });
 });
@@ -318,9 +330,22 @@ app.get('/api/v1/creatures/:moniker/events', function (req, res) {
         function(err, result, fields){
            if (err) throw err;
            res.setHeader('Access-Control-Allow-Origin', '*');
+            con.close();
            res.end(JSON.stringify(result));
         });
 });
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 app.get('/api/v1/creatures/images/:imageName', function (req, res) {
