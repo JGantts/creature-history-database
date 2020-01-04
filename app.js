@@ -337,47 +337,86 @@ app.put('/api/v1/creatures/:moniker/events/:eventNumber', function (req, res) {
         });
 });
 
-
-
-
-
-
-
-
-
-
-
-
-app.get('/api/v1/creatures/images/:imageName', function (req, res) {
-    var filePath = __dirname + "/images/" + req.params.imageName + ".png";
-    fs.exists(filePath, function(exists){
-        if(exists){
-            fs.readFile(filePath, function(err, data){
-                if(err){
-                    console.log(err);
-                    res.status(500).end();
-                }else{
-                    res.writeHead(200, {'Content-Type': 'image/png'});
-                    res.write(data);
-                    res.end();
-                }
-            });
-        }else{
-            console.log("Couldn't find: " + filePath);
-            res.status(404).end();
-        }
+app.get('/api/v1/creatures/:moniker/events/:eventNumber/image', function (req, res) {
+    con.query(
+        "SELECT event.photo " +
+        "FROM Events AS event " +  
+        "WHERE event.moniker = ? AND event.eventNumber = ?",
+        [req.params.moniker, req.params.eventNumber],
+        function(err, result, fields){
+            if (err) throw err;
+            if (result.length === 0){
+                res.status(404).end();
+            }else if (result[0].photo == ""){
+                res.status(404).end();
+            }else{
+                var filePath = __dirname + "/images/" + result[0].photo + ".png";
+                fs.exists(filePath, function(exists){
+                    if(exists){
+                        fs.readFile(filePath, function(err, data){
+                            if(err){
+                                console.log(err);
+                                res.status(500).end();
+                            }else{
+                                res.writeHead(200, {'Content-Type': 'image/png'});
+                                res.write(data);
+                                res.end();
+                            }
+                        });
+                    }else{
+                        console.log("Couldn't find: " + filePath);
+                        res.status(500).end();
+                    }
+                });
+            }
     });
 });
-
-app.put('/api/v1/creatures/images/:imageName', function (req,res) {
-  console.log(req.params.imageName);
-  var filePath = __dirname + "/images/" + req.params.imageName + ".png";
-  fs.writeFile(filePath, req.body, function(err) {
-    if(err){
-        console.log(err);
-        res.status(500).end();
-    }else{
-        res.status(204).end();
-    }
-  });
+app.head('/api/v1/creatures/:moniker/events/:eventNumber/image', function (req, res) {
+    con.query(
+        "SELECT event.photo " +
+        "FROM Events AS event " +  
+        "WHERE event.moniker = ? AND event.eventNumber = ?",
+        [req.params.moniker, req.params.eventNumber],
+        function(err, result, fields){
+            if (err) throw err;
+            if (result.length === 0){
+                res.status(404).end();
+            }else if (result[0].photo == ""){
+                res.status(404).end();
+            }else{
+                var filePath = __dirname + "/images/" + result[0].photo + ".png";
+                fs.exists(filePath, function(exists){
+                    if(exists){
+                        res.status(200).end();
+                    }else{
+                        res.status(500).end();
+                    }
+                });
+            }
+    });
+});
+app.put('/api/v1/creatures/:moniker/events/:eventNumber/image', function (req, res) {
+    con.query(
+        "SELECT event.photo " +
+        "FROM Events AS event " +  
+        "WHERE event.moniker = ? AND event.eventNumber = ?",
+        [req.params.moniker, req.params.eventNumber],
+        function(err, result, fields){
+            if (err) throw err;
+            if (result.length === 0){
+                res.status(400).end();
+            }else if (result[0].photo == ""){
+                res.status(400).end();
+            }else{
+                var filePath = __dirname + "/images/" + result[0].photo + ".png";
+                fs.writeFile(filePath, req.body, function(err) {
+                    if(err){
+                        console.log(err);
+                        res.status(500).end();
+                    }else{
+                        res.status(204).end();
+                    }
+                 });
+            }
+    });
 });
