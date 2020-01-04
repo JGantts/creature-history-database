@@ -269,6 +269,41 @@ app.put('/api/v1/creatures/:moniker/name', function (req, res) {
         });
 });
 
+app.get('/api/v1/creatures/:moniker/image', function (req, res) {
+    con.query(
+        "SELECT event.photo " +
+        "FROM Events AS event " +  
+        "WHERE event.moniker = ? AND NOT event.photo = '' " +
+        "ORDER BY event.timeUTC DESC " +
+        "LIMIT 1",
+        [req.params.moniker],
+        function(err, result, fields){
+            if (err) throw err;
+            if (result.length === 0){
+                res.status(404).end();
+            }else{
+                var filePath = __dirname + "/images/" + result[0].photo + ".png";
+                fs.exists(filePath, function(exists){
+                    if(exists){
+                        fs.readFile(filePath, function(err, data){
+                            if(err){
+                                console.log(err);
+                                res.status(500).end();
+                            }else{
+                                res.writeHead(200, {'Content-Type': 'image/png'});
+                                res.write(data);
+                                res.end();
+                            }
+                        });
+                    }else{
+                        console.log("Couldn't find: " + filePath);
+                        res.status(500).end();
+                    }
+                });
+            }
+    });
+});
+
 app.get('/api/v1/creatures/:moniker/events', function (req, res) {
     con.query(
         "SELECT event.moniker, event.histEventType, event.lifeStage, event.photo, event.moniker1, m1.name AS moniker1Name, event.moniker2, m2.name AS moniker2Name, event.timeUTC, event.tickAge, event.userText, event.worldName, event.WorldTick, event.worldId " +
