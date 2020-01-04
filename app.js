@@ -231,6 +231,27 @@ app.get('/api/v1/creatures/:moniker/gender', function (req, res) {
             res.end();
         });
 });
+app.put('/api/v1/creatures/:moniker/gender', function (req, res) {
+    
+    var con = mysql.createConnection({
+        host: config.database.host,
+        user: config.database.user,
+        password: config.database.password,
+        database: config.database.db
+    });
+    
+    con.query(
+        "UPDATE Creatures " +
+        "SET gender = ? " + 
+        "WHERE moniker = ?",
+        [req.body.gender, req.params.moniker],
+        function(err, results, fields){
+            if (err) throw err;
+            
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            res.end();
+        });
+});
 
 app.get('/api/v1/creatures/:moniker/name', function (req, res) {
     
@@ -251,6 +272,27 @@ app.get('/api/v1/creatures/:moniker/name', function (req, res) {
             
             res.setHeader('Access-Control-Allow-Origin', '*');
             res.write(results[0].name);
+            res.end();
+        });
+});
+app.put('/api/v1/creatures/:moniker/name', function (req, res) {
+    
+    var con = mysql.createConnection({
+        host: config.database.host,
+        user: config.database.user,
+        password: config.database.password,
+        database: config.database.db
+    });
+    
+    con.query(
+        "UPDATE Creatures " +
+        "SET name = ? " + 
+        "WHERE moniker = ?",
+        [req.body.name, req.params.moniker],
+        function(err, results, fields){
+            if (err) throw err;
+            
+            res.setHeader('Access-Control-Allow-Origin', '*');
             res.end();
         });
 });
