@@ -282,12 +282,25 @@ app.get('/api/v1/creatures/:moniker/events', function (req, res) {
         function(err, result, fields){
            if (err) throw err;
            res.setHeader('Access-Control-Allow-Origin', '*');
-            con.close();
            res.end(JSON.stringify(result));
         });
 });
 
-
+app.put('/api/v1/creatures/:moniker/events/:eventNumber', function (req, res) {
+    console.log(req.body);
+    
+    con.query(
+        "INSERT INTO Events " +
+        "(moniker, eventNumber, histEventType, lifeStage, photo, moniker1, moniker2, timeUtc, tickAge, worldTick, worldName, worldId, userText) " +
+        "VALUES ? ",
+        [[[req.params.moniker, req.params.eventNumber, req.body.histEventType, req.body.lifeStage, req.body.photo, req.body.moniker1, req.body.moniker2, req.body.timeUtc, req.body.tickAge, req.body.worldTick, req.body.worldName, req.body.worldId, req.body.userText]]],
+        function(err, results, fields){
+            if (err) throw err;
+            
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            res.end();
+        });
+});
 
 
 
