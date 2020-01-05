@@ -11,7 +11,7 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(bodyParser.raw({
   type: 'image/png',
-  limit: '10mb'
+  limit: '1mb'
 }));
 
 var con = mysql.createConnection({
@@ -37,14 +37,10 @@ var server = app.listen(8081, function () {
 
 app.get('/api/v1/creatures', function (req, res) {
     con.query(
-        "SELECT c.moniker, c.name, c.crossoverPointMutations, c.pointMutations, c.gender, c.genus, c.birthEventType, c.birthdate, " +
-        "   c.parent1Moniker, p1.name AS parent1Name, c.parent2Moniker, p2.name AS parent2Name, " +
-        "   c.birthWorldName, c.birthWorldId " +
-        "FROM Creatures AS c " + 
-        "LEFT JOIN Creatures AS p1 " + 
-        "ON c.parent1Moniker = p1.moniker " + 
-        "LEFT JOIN Creatures AS p2 " +
-        "ON c.parent2Moniker = p2.moniker " +
+        "SELECT c.moniker, n.name, c.genus, c.gender " +
+        "FROM Creatures AS c " +
+        "LEFT JOIN Names AS n " +
+        "ON n.moniker = c.moniker " +
         "ORDER BY RAND() " +
         "LIMIT 12 ",
         [req.params.moniker],
@@ -52,165 +48,147 @@ app.get('/api/v1/creatures', function (req, res) {
            if (err) throw err;
            result = result.sort(function(a, b){return a.birthdate-b.birthdate});
            res.setHeader('Access-Control-Allow-Origin', '*');
-           res.write("[");
-           async.forEachOf(result, (creature, i, callback) => {
-               con.query(
-                "SELECT relation.child AS moniker, creature.name AS name " +
-                "FROM ParentToChild AS relation " + 
-                "LEFT JOIN Creatures AS creature " +
-                "ON relation.child = creature.moniker " + 
-                "WHERE relation.parent = ?",
-                [creature.moniker],
-                function(err, result, fields){
-                    if (err) throw err;
-                    creature.children = result;
-                    con.query(
-                        "SELECT event.photo " +
-                        "FROM Events AS event " +  
-                        "WHERE event.moniker = ? AND NOT event.photo = '' " +
-                        "ORDER BY event.timeUTC DESC " +
-                        "LIMIT 1",
-                        [creature.moniker],
-                        function(err, result, fields){
-                            
-                            if (err) throw err;
-                            if (i !== 0){
-                               res.write(",");
-                            }
-                            if (result.length === 0){
-                                creature.photo = null;
-                            }else{
-                                creature.photo = result[0].photo;
-                            }
-                            res.write(JSON.stringify(creature));
-                            callback();
-                    });
-                });
-               
-           }, err => {
-               if (err) throw err;
-               res.end("]");
-           });
-           
+           res.write(JSON.stringify(result));
+           res.end();
         });
 });
 
 app.get('/api/v1/creatures/:moniker', function (req, res) {
     con.query(
-        "SELECT c.moniker, c.name, c.crossoverPointMutations, c.pointMutations, c.gender, c.genus, c.birthEventType, c.birthdate, " +
-        "   c.parent1Moniker, p1.name AS parent1Name, c.parent2Moniker, p2.name AS parent2Name, " +
-        "   c.birthWorldName, c.birthWorldId " +
-        "FROM Creatures AS c " + 
-        "LEFT JOIN Creatures AS p1 " + 
-        "ON c.parent1Moniker = p1.moniker " + 
-        "LEFT JOIN Creatures AS p2 " +
-        "ON c.parent2Moniker = p2.moniker " +
+        "SELECT c.moniker, n.name, c.genus, c.gender " +
+        "FROM Creatures AS c " +
+        "LEFT JOIN Names AS n " +
+        "ON n.moniker = c.moniker " +
         "WHERE c.moniker = ?",
         [req.params.moniker],
         function(err, results, fields){
             if (err) throw err;
             var creature = results[0];
-            con.query(
-                "SELECT relation.child AS moniker, creature.name AS name " +
-                "FROM ParentToChild AS relation " + 
-                "LEFT JOIN Creatures AS creature " + 
-                "ON relation.child = creature.moniker " + 
-                "WHERE relation.parent = ?",
-                [creature.moniker],
-                function(err, childrenResult, fields){
-                   if (err) throw err;
-                   creature.children = childrenResult;
-                   res.setHeader('Access-Control-Allow-Origin', '*');
-                   res.end(JSON.stringify(creature));
-                });
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            res.end(JSON.stringify(creature));
         });
 });
 app.put('/api/v1/creatures/:moniker', function (req, res) {
     var moniker = req.params.moniker;
     var creature = req.body;
-    var birthEvent = creature.events[0];
     
-    var events = creature.events
-    .map( (event) => {return [
-               moniker,
-               event.eventNumber,
-               event.histEventType,
-               event.lifeStage,
-               event.photo,
-               event.moniker1,
-               event.moniker2,
-               event.timeUtc,
-               event.tickAge,
-               event.worldTick,
-               event.worldName,
-               event.worldId,
-               event.userText
-    ];});
+    var eventsForTable = creature.events
+        .map( (event) => {return [
+                   moniker,
+                   event.eventNumber,
+                   event.histEventType,
+                   event.lifeStage,
+                   event.photo,
+                   event.moniker1,
+                   event.moniker2,
+                   event.timeUtc,
+                   event.tickAge,
+                   event.worldTick,
+                   event.worldName,
+                   event.worldId,
+        ];});
+    
+    var utxtsForTable = creature.events
+        .filter((event) => {return event.utxt !== ""})
+        .map((event) => {return [moniker, event.eventNumber, event.worldId, event.utxt, 0]});
     
     var children = creature.events
-    .filter((event) => { return event.histEventType === 8 || event.histEventType === 9; })
-    .map((event) => { return [
-        moniker,
-        event.moniker1
-    ];});
-    
-    con.connect(function(err) {
-        if (err) throw err;
-        
-        async.series([
-            function(callback){
+        .filter((event) => { return event.histEventType === 8 || event.histEventType === 9; })
+        .map((event) => { return [
+            moniker,
+            event.moniker1
+        ];});
+
+    async.series([
+        function(callback){
+            con.query(
+                "INSERT IGNORE INTO Creatures " +
+                "(moniker, crossoverPointMutations, pointMutations, gender, genus) " +
+                "VALUES ? ",
+                [[[
+                    moniker,
+                    creature.crossoverPointMutations,
+                    creature.pointMutations,
+                    creature.gender,
+                    creature.genus
+                    ]]],
+                function (err, result) {
+                    if (err) throw err;
+                    callback();
+        })},
+        function(callback){
+            if(creature.name !== ""){
                 con.query(
-                    "INSERT IGNORE INTO Creatures " +
-                    "(moniker, name, crossoverPointMutations, pointMutations, gender, genus, birthEventType, birthdate, parent1Moniker, parent2Moniker, birthWorldName, birthWorldId) " +
+                    "INSERT IGNORE INTO Names " +
+                    "(moniker, name, lastUpdate) " +
                     "VALUES ? ",
-                    [[[
-                        moniker,
-                        creature.name,
-                        creature.crossoverPointMutations,
-                        creature.pointMutations,
-                        creature.gender,
-                        creature.genus,
-                        birthEvent.histEventType,
-                        birthEvent.timeUtc,
-                        birthEvent.moniker1,
-                        birthEvent.moniker2,
-                        birthEvent.worldName,
-                        birthEvent.worldId
-                        ]]],
+                    [[[creature.moniker, creature.name, 0]]],
                     function (err, result) {
                         if (err) throw err;
                         callback();
-            })},
-            function(callbakc){
+            })}else{
+                callback();
+        }},
+        function(callback){
+            if(eventsForTable.length > 0){
                 con.query(
                     "INSERT IGNORE INTO Events " +
-                    "(moniker, eventNumber, histEventType, lifeStage, photo, moniker1, moniker2, timeUtc, tickAge, worldTick, worldName, worldId, userText) " +
+                    "(moniker, eventNumber, histEventType, lifeStage, photo, moniker1, moniker2, timeUtc, tickAge, worldTick, worldName, worldId) " +
                     "VALUES ? ",
-                    [events],
+                    [eventsForTable],
                     function (err, result) {
                         if (err) throw err;
                         callback();
-            })},
-            function(callback){
-                if (children.length > 0){
-                    con.query(
-                        "INSERT INTO ParentToChild " +
-                        "(parent, child) " +
-                        "VALUES ? ",
-                        [children],
-                        function (err, result) {
+            })}else{
+                callback();
+        }},
+        function(callback){
+            if(utxtsForTable.length > 0){
+                con.query(
+                    "INSERT IGNORE INTO EventUserText " +
+                    "(moniker, eventNumber, worldId, utxt, lastUpdate) " +
+                    "VALUES ? ",
+                    [utxtsForTable],
+                    function (err, result) {
                         if (err) throw err;
                         callback();
-                    });
-                }else{
+            })}else{
+                callback();
+        }},
+        function(callback){
+            if (children.length > 0){
+                con.query(
+                    "INSERT IGNORE INTO ParentToChild " +
+                    "(parent, child) " +
+                    "VALUES ? ",
+                    [children],
+                    function (err, result) {
+                    if (err) throw err;
                     callback();
-                }
+                });
+            }else{
+                callback();
             }
-            ],
-            function(err, results){
-                res.end("");
-            });
-    });
+        },
+        function(callback){
+            if(creature.events.length > 0){
+                con.query(
+                    "INSERT IGNORE INTO ChildToParents " +
+                    "(child, parent1, parent2, conceptionEventType) " +
+                    "VALUES ? ",
+                    [[[moniker, creature.events[0].moniker1, creature.events[0].moniker2, creature.events[0].histEventType]]],
+                    function (err, result) {
+                    if (err) throw err;
+                    callback();
+                });
+            }else{
+                callback();
+            }
+        }
+        ],
+        function(err, results){
+            res.end();
+        });
 });
 
 app.get('/api/v1/creatures/:moniker/gender', function (req, res) {
@@ -243,9 +221,9 @@ app.put('/api/v1/creatures/:moniker/gender', function (req, res) {
 
 app.get('/api/v1/creatures/:moniker/name', function (req, res) {
     con.query(
-        "SELECT c.name " +
-        "FROM Creatures AS c " + 
-        "WHERE c.moniker = ?",
+        "SELECT n.name " +
+        "FROM Names AS n " + 
+        "WHERE n.moniker = ?",
         [req.params.moniker],
         function(err, results, fields){
             if (err) throw err;
@@ -257,7 +235,7 @@ app.get('/api/v1/creatures/:moniker/name', function (req, res) {
 });
 app.put('/api/v1/creatures/:moniker/name', function (req, res) {
     con.query(
-        "UPDATE Creatures " +
+        "UPDATE Names " +
         "SET name = ? " + 
         "WHERE moniker = ?",
         [req.body.name, req.params.moniker],
@@ -304,14 +282,35 @@ app.get('/api/v1/creatures/:moniker/image', function (req, res) {
     });
 });
 
+app.get('/api/v1/creatures/:moniker/kin', function (req, res) {
+    con.query(
+        "SELECT p1.parent AS parent1Moniker, p2.parent AS parent2Moniker " +
+        "FROM  " + 
+        "WHERE Creatures.moniker = ?",
+        [req.params.moniker],
+        function(err, results, fields){
+            if (err) throw err;
+            var creature = results[0];
+            con.query(
+                "SELECT relation.child AS moniker, creature.name AS name " +
+                "FROM ParentToChild AS relation " + 
+                "LEFT JOIN Creatures AS creature " + 
+                "ON relation.child = creature.moniker " + 
+                "WHERE relation.parent = ?",
+                [creature.moniker],
+                function(err, childrenResult, fields){
+                   if (err) throw err;
+                   creature.children = childrenResult;
+                   res.setHeader('Access-Control-Allow-Origin', '*');
+                   res.end(JSON.stringify(creature));
+                });
+        });
+});
+
 app.get('/api/v1/creatures/:moniker/events', function (req, res) {
     con.query(
-        "SELECT event.moniker, event.histEventType, event.lifeStage, event.photo, event.moniker1, m1.name AS moniker1Name, event.moniker2, m2.name AS moniker2Name, event.timeUTC, event.tickAge, event.userText, event.worldName, event.WorldTick, event.worldId " +
+        "SELECT * " +
         "FROM Events as event " + 
-        "LEFT JOIN Creatures as m1 " +
-        "ON event.moniker1 = m1.moniker " +
-        "LEFT JOIN Creatures as m2 " +
-        "ON event.moniker2 = m2.moniker " +
         "WHERE event.moniker = ?",
         [req.params.moniker],
         function(err, result, fields){
@@ -325,10 +324,22 @@ app.put('/api/v1/creatures/:moniker/events/:eventNumber', function (req, res) {
     console.log(req.body);
     
     con.query(
-        "INSERT INTO Events " +
-        "(moniker, eventNumber, histEventType, lifeStage, photo, moniker1, moniker2, timeUtc, tickAge, worldTick, worldName, worldId, userText) " +
+        "INSERT IGNORE INTO Events " +
+        "(moniker, eventNumber, histEventType, lifeStage, photo, moniker1, moniker2, timeUtc, tickAge, worldTick, worldName, worldId,) " +
         "VALUES ? ",
-        [[[req.params.moniker, req.params.eventNumber, req.body.histEventType, req.body.lifeStage, req.body.photo, req.body.moniker1, req.body.moniker2, req.body.timeUtc, req.body.tickAge, req.body.worldTick, req.body.worldName, req.body.worldId, req.body.userText]]],
+        [[[req.params.moniker, req.params.eventNumber, req.body.histEventType, req.body.lifeStage, req.body.photo, req.body.moniker1, req.body.moniker2, req.body.timeUtc, req.body.tickAge, req.body.worldTick, req.body.worldName, req.body.worldId]]],
+        function(err, results, fields){
+            if (err) throw err;
+            
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            res.end();
+        });
+    
+    con.query(
+        "INSERT IGNORE INTO EventUserText " +
+        "(moniker, eventNumber, worldId, userText, lastUpdate) " +
+        "VALUES ? ",
+        [[[req.params.moniker, req.params.eventNumber, req.body.worldId, req.body.userText, 0]]],
         function(err, results, fields){
             if (err) throw err;
             
@@ -336,6 +347,24 @@ app.put('/api/v1/creatures/:moniker/events/:eventNumber', function (req, res) {
             res.end();
         });
 });
+
+app.put('/api/v1/creatures/:moniker/events/:eventNumber/user-text', function (req, res) {
+    console.log(req.body);
+    
+    con.query(
+        "UPDATE EventUserText " +
+        "SET userText = ? " +
+        "WHERE moniker = ? AND eventNumber = ? AND worldId = ?",
+        [[[req.body.userText, req.params.moniker, req.params.eventNumber, req.body.worldId]]],
+        function(err, results, fields){
+            if (err) throw err;
+            
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            res.end();
+        });
+});
+
+
 
 app.get('/api/v1/creatures/:moniker/events/:eventNumber/image', function (req, res) {
     con.query(
@@ -419,4 +448,17 @@ app.put('/api/v1/creatures/:moniker/events/:eventNumber/image', function (req, r
                  });
             }
     });
+});
+
+app.put('/api/v1/creatures/images/:imageName', function (req,res) {
+  console.log(req.params.imageName);
+  var filePath = __dirname + "/images/" + req.params.imageName + ".png";
+  fs.writeFile(filePath, req.body, function(err) {
+    if(err){
+        console.log(err);
+        res.status(500).end();
+    }else{
+        res.status(204).end();
+    }
+  });
 });
