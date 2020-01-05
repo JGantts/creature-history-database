@@ -284,20 +284,18 @@ app.get('/api/v1/creatures/:moniker/image', function (req, res) {
 
 app.get('/api/v1/creatures/:moniker/kin', function (req, res) {
     con.query(
-        "SELECT p1.parent AS parent1Moniker, p2.parent AS parent2Moniker " +
-        "FROM  " + 
-        "WHERE Creatures.moniker = ?",
+        "SELECT ChildToParents.parent1 AS parent1Moniker, ChildToParents.parent2 AS parent2Moniker, ChildToParents.conceptionEventType " +
+        "FROM ChildToParents " + 
+        "WHERE ChildToParents.child = ?",
         [req.params.moniker],
         function(err, results, fields){
             if (err) throw err;
             var creature = results[0];
             con.query(
-                "SELECT relation.child AS moniker, creature.name AS name " +
+                "SELECT relation.child AS moniker " +
                 "FROM ParentToChild AS relation " + 
-                "LEFT JOIN Creatures AS creature " + 
-                "ON relation.child = creature.moniker " + 
                 "WHERE relation.parent = ?",
-                [creature.moniker],
+                [req.params.moniker],
                 function(err, childrenResult, fields){
                    if (err) throw err;
                    creature.children = childrenResult;
